@@ -51,7 +51,8 @@ jobs:
       - name: Run the tests
         # Don't use --all-features as that will enable conflicting features.
         # `--locked` ensures that the lockfile is up to date.
-        run: cargo test --locked --workspace
+        # Exclude diopser and crossover as they require nightly (simd default feature).
+        run: cargo test --locked --workspace --exclude diopser --exclude crossover
 
   # This makes sure that NIH-plug can be compiled without VST3 support
   build-without-vst3:
