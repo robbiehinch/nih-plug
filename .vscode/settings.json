@@ -1,0 +1,13 @@
+{
+    "terminal.integrated.env.windows": {
+        "PATH": "${env:USERPROFILE}\\.cargo\\bin;${env:PATH}"
+    },
+    "terminal.integrated.env.osx": {
+        "PATH": "${env:HOME}/.cargo/bin:${env:PATH}"
+    },
+    "terminal.integrated.env.linux": {
+        "PATH": "${env:HOME}/.cargo/bin:${env:PATH}"
+    },
+    "rust-analyzer.cargo.buildScripts.enable": true,
+    "rust-analyzer.procMacro.enable": true
+}
