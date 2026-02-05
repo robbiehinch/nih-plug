@@ -49,11 +49,9 @@ jobs:
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@stable
       - name: Run the tests
-        # Don't use --all-features as that will enable a whole bunch of
-        # conflicting iced features. `--locked` ensures that the lockfile is up
-        # to date. We only really need this in one of the builds.
-        # Note: simd feature removed as it requires nightly and std::simd API is unstable
-        run: cargo test --locked --workspace --features "standalone,zstd"
+        # Don't use --all-features as that will enable conflicting features.
+        # `--locked` ensures that the lockfile is up to date.
+        run: cargo test --locked --workspace
 
   # This makes sure that NIH-plug can be compiled without VST3 support
   build-without-vst3:
