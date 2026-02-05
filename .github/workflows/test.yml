@@ -47,13 +47,13 @@ jobs:
           key: ${{ matrix.name }}-${{ matrix.cross-target }}
 
       - name: Set up Rust toolchain
-        # Needed for SIMD
-        uses: dtolnay/rust-toolchain@nightly
+        uses: dtolnay/rust-toolchain@stable
       - name: Run the tests
         # Don't use --all-features as that will enable a whole bunch of
         # conflicting iced features. `--locked` ensures that the lockfile is up
         # to date. We only really need this in one of the builds.
-        run: cargo test --locked --workspace --features "simd,standalone,zstd"
+        # Note: simd feature removed as it requires nightly and std::simd API is unstable
+        run: cargo test --locked --workspace --features "standalone,zstd"
 
   # This makes sure that NIH-plug can be compiled without VST3 support
   build-without-vst3:
@@ -79,7 +79,6 @@ jobs:
           key: build-without-vst3-ubuntu
 
       - name: Set up Rust toolchain
-        # Needed for SIMD
-        uses: dtolnay/rust-toolchain@nightly
-      - name: Run the tests
+        uses: dtolnay/rust-toolchain@stable
+      - name: Build without VST3
         run: cargo build --no-default-features
