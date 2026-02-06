@@ -1,0 +1,27 @@
+/* Phase Analyzer Theme */
+
+* {
+    background-color: #1a1a1a;
+    color: #e0e0e0;
+}
+
+.param-button {
+    background-color: #3a3a3a;
+    border-color: #555;
+    border-width: 1px;
+    border-radius: 4px;
+    padding: 8px 16px;
+    cursor: pointer;
+}
+
+.param-button:hover {
+    background-color: #4a4a4a;
+}
+
+.param-button:active {
+    background-color: #2a2a2a;
+}
+
+phase-analyzer {
+    background-color: #0a0a0a;
+}
