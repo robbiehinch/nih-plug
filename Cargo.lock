@@ -5348,6 +5348,7 @@ dependencies = [
 name = "spectral_compressor"
 version = "0.4.3"
 dependencies = [
+ "approx 0.5.1",
  "atomic_float",
  "crossbeam",
  "nih_plug",
