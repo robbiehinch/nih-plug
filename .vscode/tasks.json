@@ -1,0 +1,83 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Bundle Plugin (Release)",
+            "type": "shell",
+            "command": "cargo",
+            "args": [
+                "xtask",
+                "bundle",
+                "${input:pluginName}",
+                "--release"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$rustc"],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Bundle All Plugins (Release)",
+            "type": "shell",
+            "command": "cargo",
+            "args": [
+                "xtask",
+                "bundle",
+                "--release"
+            ],
+            "group": "build",
+            "problemMatcher": ["$rustc"]
+        },
+        {
+            "label": "Check Plugin",
+            "type": "shell",
+            "command": "cargo",
+            "args": [
+                "check",
+                "-p",
+                "${input:pluginName}"
+            ],
+            "group": "build",
+            "problemMatcher": ["$rustc"]
+        },
+        {
+            "label": "Build Plugin (Debug)",
+            "type": "shell",
+            "command": "cargo",
+            "args": [
+                "xtask",
+                "bundle",
+                "${input:pluginName}"
+            ],
+            "group": "build",
+            "problemMatcher": ["$rustc"]
+        }
+    ],
+    "inputs": [
+        {
+            "id": "pluginName",
+            "description": "Plugin to build",
+            "type": "pickString",
+            "options": [
+                "spectral_compressor",
+                "diopser",
+                "crisp",
+                "buffr_glitch",
+                "crossover",
+                "loudness_war_winner",
+                "puberty_simulator",
+                "safety_limiter",
+                "soft_vacuum",
+                "gain",
+                "gain_gui_egui",
+                "gain_gui_vizia"
+            ],
+            "default": "spectral_compressor"
+        }
+    ]
+}
