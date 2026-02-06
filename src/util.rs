@@ -193,4 +193,44 @@ mod tests {
             approx::assert_relative_eq!(gain_to_db(-2.0), gain_to_db_fast(-2.0), epsilon = 1e-7);
         }
     }
+
+    mod midi_freq_conversion {
+        use super::super::*;
+
+        #[test]
+        fn midi_note_boundaries() {
+            // Test MIDI note 0 (lowest, ~8.176 Hz)
+            approx::assert_relative_eq!(midi_note_to_freq(0), 8.175799, epsilon = 1e-4);
+
+            // Test MIDI note 69 (A4 = 440 Hz exactly)
+            assert_eq!(midi_note_to_freq(69), 440.0);
+
+            // Test MIDI note 127 (highest, ~12543.85 Hz)
+            approx::assert_relative_eq!(midi_note_to_freq(127), 12543.854, epsilon = 1e-2);
+        }
+
+        #[test]
+        fn frequency_roundtrip() {
+            // Test freq → MIDI → freq roundtrip for standard frequencies
+            let test_freqs = [440.0, 261.626, 523.251, 880.0, 1000.0];
+
+            for &freq in &test_freqs {
+                let midi = freq_to_midi_note(freq);
+                let roundtrip_freq = f32_midi_note_to_freq(midi);
+                approx::assert_relative_eq!(freq, roundtrip_freq, epsilon = 1e-3);
+            }
+        }
+
+        #[test]
+        fn midi_roundtrip() {
+            // Test MIDI → freq → MIDI roundtrip for various notes
+            let test_notes = [0.0, 21.0, 60.0, 69.0, 69.5, 88.0, 108.0, 127.0];
+
+            for &note in &test_notes {
+                let freq = f32_midi_note_to_freq(note);
+                let roundtrip_note = freq_to_midi_note(freq);
+                approx::assert_relative_eq!(note, roundtrip_note, epsilon = 1e-4);
+            }
+        }
+    }
 }

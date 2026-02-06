@@ -713,5 +713,98 @@ mod tests {
         assert_eq!(smoother.next(), 20);
     }
 
-    // TODO: Tests for the exponential smoothing
+    #[test]
+    fn exponential_f32_smoothing() {
+        let smoother: Smoother<f32> = Smoother::new(SmoothingStyle::Exponential(100.0));
+        smoother.reset(10.0);
+        assert_eq!(smoother.next(), 10.0);
+
+        // Verify that we reach the target value at the expected time
+        smoother.set_target(100.0, 20.0);
+        for _ in 0..(10 - 2) {
+            smoother.next();
+        }
+        assert_ne!(smoother.next(), 20.0);
+        assert_eq!(smoother.next(), 20.0);
+    }
+
+    #[test]
+    fn exponential_i32_smoothing() {
+        let smoother: Smoother<i32> = Smoother::new(SmoothingStyle::Exponential(100.0));
+        smoother.reset(10);
+        assert_eq!(smoother.next(), 10);
+
+        // Test integer exponential smoothing with rounding
+        // Due to rounding, i32 values may reach the target earlier than f32
+        smoother.set_target(100.0, 20);
+        let mut reached_target = false;
+        for _ in 0..10 {
+            if smoother.next() == 20 {
+                reached_target = true;
+                break;
+            }
+        }
+        // Verify the target was reached within the smoothing period
+        assert!(reached_target);
+        assert_eq!(smoother.next(), 20);
+    }
+
+    #[test]
+    fn exponential_f32_zero_crossing() {
+        let smoother: Smoother<f32> = Smoother::new(SmoothingStyle::Exponential(100.0));
+        smoother.reset(-0.5);
+        assert_eq!(smoother.next(), -0.5);
+
+        // Test smoothing from negative to positive value
+        smoother.set_target(100.0, 0.8);
+        let mut crossed_zero = false;
+        for _ in 0..10 {
+            let value = smoother.next();
+            if !crossed_zero && value >= 0.0 {
+                crossed_zero = true;
+            }
+        }
+        // Verify it crossed zero and reached the target
+        assert!(crossed_zero);
+        assert_eq!(smoother.next(), 0.8);
+    }
+
+    #[test]
+    fn exponential_extreme_values() {
+        let smoother: Smoother<f32> = Smoother::new(SmoothingStyle::Exponential(100.0));
+
+        // Test very small to very large
+        smoother.reset(0.001);
+        smoother.set_target(100.0, 1000.0);
+        for _ in 0..9 {
+            let value = smoother.next();
+            assert!(value.is_finite());
+        }
+        assert_eq!(smoother.next(), 1000.0);
+
+        // Test very large to very small
+        smoother.reset(1000.0);
+        smoother.set_target(100.0, 0.001);
+        for _ in 0..9 {
+            let value = smoother.next();
+            assert!(value.is_finite());
+        }
+        assert_eq!(smoother.next(), 0.001);
+    }
+
+    #[test]
+    fn exponential_same_value() {
+        let smoother: Smoother<f32> = Smoother::new(SmoothingStyle::Exponential(100.0));
+        smoother.reset(0.5);
+        assert_eq!(smoother.next(), 0.5);
+
+        // When current == target, the smoother still goes through the steps
+        // but returns the same value throughout
+        smoother.set_target(100.0, 0.5);
+        for _ in 0..10 {
+            assert_eq!(smoother.next(), 0.5);
+        }
+        // After all steps complete, should no longer be smoothing
+        assert!(!smoother.is_smoothing());
+    }
 }
