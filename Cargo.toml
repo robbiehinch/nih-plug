@@ -42,6 +42,7 @@ members = [
   "plugins/diopser",
   "plugins/loudness_war_winner",
   "plugins/phase_analyzer",
+  "plugins/phase_sync",
   "plugins/puberty_simulator",
   "plugins/safety_limiter",
   "plugins/spectral_compressor",

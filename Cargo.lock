@@ -4326,6 +4326,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "phase_sync"
+version = "0.1.0"
+dependencies = [
+ "atomic_float",
+ "nih_plug",
+ "nih_plug_vizia",
+ "triple_buffer",
+]
+
+[[package]]
 name = "phf"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
