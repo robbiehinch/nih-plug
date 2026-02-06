@@ -1,0 +1,15 @@
+[package]
+name = "phase_sync"
+version = "0.1.0"
+edition = "2021"
+authors = ["Robson Cozendey <robson.cozendey@gmail.com>"]
+license = "GPL-3.0-or-later"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+nih_plug = { path = "../..", features = ["standalone"] }
+nih_plug_vizia = { path = "../../nih_plug_vizia" }
+triple_buffer = "6.2"
+atomic_float = "0.1"
