@@ -40,6 +40,7 @@ impl<'a> Buffer<'a> {
 
     /// Returns the number of channels in this buffer.
     #[inline]
+    
     pub fn channels(&self) -> usize {
         self.output_slices.len()
     }
