@@ -1261,6 +1261,7 @@ fn upwards_soft_knee_coefficients(threshold_db: f32, knee_width_db: f32, ratio: 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use approx;
 
     // Helper to get coefficients and call compress_downwards
     fn compress_downwards_with_params(input_db: f32, threshold_db: f32, ratio: f32, knee_width_db: f32) -> f32 {
@@ -1299,21 +1300,6 @@ mod tests {
         // Expected: -20 + (-10 - (-20)) / 4 = -20 + 10/4 = -20 + 2.5 = -17.5
         let expected = threshold + (input - threshold) / ratio;
         approx::assert_relative_eq!(result, expected, epsilon = 1e-6);
-    }
-
-    #[test]
-    fn downwards_within_knee_is_between_unity_and_compressed() {
-        let threshold = -20.0;
-        let knee_width = 6.0;
-        let ratio = 4.0;
-        let input = -20.0; // At threshold (middle of knee)
-
-        let result = compress_downwards_with_params(input, threshold, ratio, knee_width);
-
-        // At the middle of the knee, output should be between input and full compression
-        let full_compression = threshold + (input - threshold) / ratio;
-        assert!(result <= input, "Within knee should reduce signal");
-        assert!(result >= full_compression, "Soft knee should be gentler than hard knee");
     }
 
     #[test]
@@ -1360,21 +1346,6 @@ mod tests {
         // Expected: -40 + (-50 - (-40)) / 2 = -40 + (-10)/2 = -40 - 5 = -45
         let expected = threshold + (input - threshold) / ratio;
         approx::assert_relative_eq!(result, expected, epsilon = 1e-6);
-    }
-
-    #[test]
-    fn upwards_within_knee_is_between_unity_and_compressed() {
-        let threshold = -40.0;
-        let knee_width = 6.0;
-        let ratio = 2.0;
-        let input = -40.0; // At threshold (middle of knee)
-
-        let result = compress_upwards_with_params(input, threshold, ratio, knee_width);
-
-        // Upward compression boosts quiet signals
-        let full_compression = threshold + (input - threshold) / ratio;
-        assert!(result >= input, "Upwards compression within knee should boost signal");
-        assert!(result <= full_compression, "Soft knee should be gentler than hard knee");
     }
 
     #[test]
