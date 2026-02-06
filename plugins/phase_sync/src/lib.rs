@@ -3,16 +3,19 @@ use std::sync::{Arc, Mutex};
 use std::sync::atomic::Ordering;
 
 mod bass_analyzer;
+mod editor;
 mod kick_detector;
 mod lookahead_buffer;
 mod phase_controller;
 mod phase_rotator;
+mod visualization_data;
 
 use bass_analyzer::{BassAnalyzer, BassPeakInfo};
 use kick_detector::{KickDetector, KickEvent};
 use lookahead_buffer::LookaheadBuffer;
 use phase_controller::{AdaptationMode, PhaseController};
 use phase_rotator::{PhaseRotator, f32x2};
+use visualization_data::{VisualizationData, KickMarker, PhasePoint};
 
 /// Lookahead buffer size in samples (~85ms at 48kHz)
 const LOOKAHEAD_SIZE: usize = 4096;
@@ -41,12 +44,19 @@ pub struct PhaseSync {
     // Lookahead buffering for main input
     lookahead_buffer: LookaheadBuffer,
 
+    // GUI communication
+    visualization_data_input: triple_buffer::Input<VisualizationData>,
+    visualization_data_output: Arc<Mutex<triple_buffer::Output<VisualizationData>>>,
+
     // Sample counter
     sample_counter: usize,
+
+    // GUI update throttling
+    samples_since_last_gui_update: usize,
 }
 
 #[derive(Params)]
-struct PhaseSyncParams {
+pub struct PhaseSyncParams {
     // === Kick Detection ===
     #[id = "kick_thresh"]
     pub kick_threshold: FloatParam,
@@ -88,6 +98,9 @@ struct PhaseSyncParams {
 
 impl Default for PhaseSync {
     fn default() -> Self {
+        let (visualization_data_input, visualization_data_output) =
+            triple_buffer::TripleBuffer::new(&VisualizationData::default()).split();
+
         Self {
             params: Arc::new(PhaseSyncParams::default()),
             sample_rate: Arc::new(AtomicF32::new(48000.0)),
@@ -96,8 +109,53 @@ impl Default for PhaseSync {
             phase_rotator: PhaseRotator::new(),
             phase_controller: PhaseController::new(),
             lookahead_buffer: LookaheadBuffer::new(2, LOOKAHEAD_SIZE),
+            visualization_data_input,
+            visualization_data_output: Arc::new(Mutex::new(visualization_data_output)),
             sample_counter: 0,
+            samples_since_last_gui_update: 0,
         }
+    }
+}
+
+impl PhaseSync {
+    /// Send current state to GUI for visualization
+    fn send_visualization_data(&mut self, current_sample: usize, current_phase: f32) {
+        let sample_rate = self.sample_rate.load(Ordering::Relaxed);
+
+        // Get current visualization data
+        let mut viz_data = VisualizationData::new(sample_rate);
+
+        // Set phase information
+        viz_data.current_phase_degrees = current_phase;
+        viz_data.target_phase_degrees = self.phase_controller.get_target_phase();
+
+        // Add phase history point
+        viz_data.phase_history.push_back(PhasePoint {
+            time_offset: 0.0,
+            phase_degrees: current_phase,
+        });
+
+        // Limit phase history size
+        if viz_data.phase_history.len() > visualization_data::MAX_PHASE_HISTORY {
+            viz_data.phase_history.pop_front();
+        }
+
+        // Update time offsets for existing history (60 FPS update rate)
+        let time_delta = 1.0 / 60.0;
+        for point in viz_data.phase_history.iter_mut() {
+            point.time_offset -= time_delta;
+        }
+
+        // Copy recent waveform data from lookahead buffer
+        let waveform_samples = viz_data.bass_waveform.len().min(LOOKAHEAD_SIZE);
+        for i in 0..waveform_samples {
+            // Read from lookahead buffer (most recent samples)
+            let sample = self.lookahead_buffer.read_sample(0, waveform_samples - i);
+            viz_data.bass_waveform[i] = sample;
+        }
+
+        // Write to triple buffer
+        self.visualization_data_input.write(viz_data);
     }
 }
 
@@ -244,6 +302,17 @@ impl Plugin for PhaseSync {
 
     fn params(&self) -> Arc<dyn Params> {
         self.params.clone()
+    }
+
+    fn editor(&mut self, _async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
+        editor::create(
+            editor::Data {
+                params: self.params.clone(),
+                visualization_data: self.visualization_data_output.clone(),
+                sample_rate: self.sample_rate.clone(),
+            },
+            editor::default_state(),
+        )
     }
 
     fn initialize(
@@ -424,6 +493,13 @@ impl Plugin for PhaseSync {
 
             // Update phase controller sample counter
             self.phase_controller.update_sample_counter(sample_rate);
+
+            // Update GUI periodically (every 512 samples ~ 10ms at 48kHz)
+            self.samples_since_last_gui_update += 1;
+            if self.samples_since_last_gui_update >= 512 {
+                self.send_visualization_data(current_sample, current_phase);
+                self.samples_since_last_gui_update = 0;
+            }
         }
 
         self.sample_counter += buffer.samples();
