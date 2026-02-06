@@ -1261,7 +1261,6 @@ fn upwards_soft_knee_coefficients(threshold_db: f32, knee_width_db: f32, ratio: 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use approx;
 
     // Helper to get coefficients and call compress_downwards
     fn compress_downwards_with_params(input_db: f32, threshold_db: f32, ratio: f32, knee_width_db: f32) -> f32 {

@@ -64,7 +64,6 @@ impl<'a> Curve<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use approx;
 
     fn make_params(intercept: f32, center_frequency: f32, slope: f32, curve: f32) -> CurveParams {
         CurveParams {
