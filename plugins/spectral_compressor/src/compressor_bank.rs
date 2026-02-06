@@ -1257,3 +1257,229 @@ fn upwards_soft_knee_coefficients(threshold_db: f32, knee_width_db: f32, ratio: 
 
     (scale, intercept)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Helper to get coefficients and call compress_downwards
+    fn compress_downwards_with_params(input_db: f32, threshold_db: f32, ratio: f32, knee_width_db: f32) -> f32 {
+        let (scale, intercept) = downwards_soft_knee_coefficients(threshold_db, knee_width_db, ratio);
+        compress_downwards(input_db, threshold_db, ratio, knee_width_db, scale, intercept)
+    }
+
+    fn compress_upwards_with_params(input_db: f32, threshold_db: f32, ratio: f32, knee_width_db: f32) -> f32 {
+        let (scale, intercept) = upwards_soft_knee_coefficients(threshold_db, knee_width_db, ratio);
+        compress_upwards(input_db, threshold_db, ratio, knee_width_db, scale, intercept)
+    }
+
+    // ==================== compress_downwards tests ====================
+
+    #[test]
+    fn downwards_below_knee_start_is_unity() {
+        // Input below knee start should pass through unchanged
+        let threshold = -20.0;
+        let knee_width = 6.0;
+        let ratio = 4.0;
+        let input = -30.0; // Well below knee_start = -23
+
+        let result = compress_downwards_with_params(input, threshold, ratio, knee_width);
+        approx::assert_relative_eq!(result, input, epsilon = 1e-6);
+    }
+
+    #[test]
+    fn downwards_above_knee_end_applies_ratio() {
+        // Input above knee end should follow: threshold + (input - threshold) / ratio
+        let threshold = -20.0;
+        let knee_width = 6.0;
+        let ratio = 4.0;
+        let input = -10.0; // Above knee_end = -17
+
+        let result = compress_downwards_with_params(input, threshold, ratio, knee_width);
+        // Expected: -20 + (-10 - (-20)) / 4 = -20 + 10/4 = -20 + 2.5 = -17.5
+        let expected = threshold + (input - threshold) / ratio;
+        approx::assert_relative_eq!(result, expected, epsilon = 1e-6);
+    }
+
+    #[test]
+    fn downwards_within_knee_is_between_unity_and_compressed() {
+        let threshold = -20.0;
+        let knee_width = 6.0;
+        let ratio = 4.0;
+        let input = -20.0; // At threshold (middle of knee)
+
+        let result = compress_downwards_with_params(input, threshold, ratio, knee_width);
+
+        // At the middle of the knee, output should be between input and full compression
+        let full_compression = threshold + (input - threshold) / ratio;
+        assert!(result <= input, "Within knee should reduce signal");
+        assert!(result >= full_compression, "Soft knee should be gentler than hard knee");
+    }
+
+    #[test]
+    fn downwards_zero_knee_width_is_hard_knee() {
+        let threshold = -20.0;
+        let knee_width = 0.0;
+        let ratio = 4.0;
+
+        // Just below threshold - no compression
+        let input_below = -20.001;
+        let result_below = compress_downwards_with_params(input_below, threshold, ratio, knee_width);
+        approx::assert_relative_eq!(result_below, input_below, epsilon = 1e-3);
+
+        // Just above threshold - full compression kicks in
+        let input_above = -19.999;
+        let result_above = compress_downwards_with_params(input_above, threshold, ratio, knee_width);
+        let expected_above = threshold + (input_above - threshold) / ratio;
+        approx::assert_relative_eq!(result_above, expected_above, epsilon = 1e-3);
+    }
+
+    // ==================== compress_upwards tests ====================
+
+    #[test]
+    fn upwards_above_knee_end_is_unity() {
+        // Input above knee end should pass through unchanged
+        let threshold = -40.0;
+        let knee_width = 6.0;
+        let ratio = 2.0;
+        let input = -30.0; // Well above knee_end = -37
+
+        let result = compress_upwards_with_params(input, threshold, ratio, knee_width);
+        approx::assert_relative_eq!(result, input, epsilon = 1e-6);
+    }
+
+    #[test]
+    fn upwards_below_knee_start_applies_ratio() {
+        // Input below knee start should follow: threshold + (input - threshold) / ratio
+        let threshold = -40.0;
+        let knee_width = 6.0;
+        let ratio = 2.0;
+        let input = -50.0; // Below knee_start = -43
+
+        let result = compress_upwards_with_params(input, threshold, ratio, knee_width);
+        // Expected: -40 + (-50 - (-40)) / 2 = -40 + (-10)/2 = -40 - 5 = -45
+        let expected = threshold + (input - threshold) / ratio;
+        approx::assert_relative_eq!(result, expected, epsilon = 1e-6);
+    }
+
+    #[test]
+    fn upwards_within_knee_is_between_unity_and_compressed() {
+        let threshold = -40.0;
+        let knee_width = 6.0;
+        let ratio = 2.0;
+        let input = -40.0; // At threshold (middle of knee)
+
+        let result = compress_upwards_with_params(input, threshold, ratio, knee_width);
+
+        // Upward compression boosts quiet signals
+        let full_compression = threshold + (input - threshold) / ratio;
+        assert!(result >= input, "Upwards compression within knee should boost signal");
+        assert!(result <= full_compression, "Soft knee should be gentler than hard knee");
+    }
+
+    #[test]
+    fn upwards_zero_knee_width_is_hard_knee() {
+        let threshold = -40.0;
+        let knee_width = 0.0;
+        let ratio = 2.0;
+
+        // Just above threshold - no compression
+        let input_above = -39.999;
+        let result_above = compress_upwards_with_params(input_above, threshold, ratio, knee_width);
+        approx::assert_relative_eq!(result_above, input_above, epsilon = 1e-3);
+
+        // Just below threshold - full compression kicks in
+        let input_below = -40.001;
+        let result_below = compress_upwards_with_params(input_below, threshold, ratio, knee_width);
+        let expected_below = threshold + (input_below - threshold) / ratio;
+        approx::assert_relative_eq!(result_below, expected_below, epsilon = 1e-3);
+    }
+
+    // ==================== soft knee coefficient tests ====================
+
+    #[test]
+    fn downwards_knee_coefficients_zero_width_returns_default_scale() {
+        let (scale, _intercept) = downwards_soft_knee_coefficients(-20.0, 0.0, 4.0);
+        approx::assert_relative_eq!(scale, 1.0, epsilon = 1e-6);
+    }
+
+    #[test]
+    fn downwards_knee_coefficients_formula() {
+        // Verify the Giannoulis et al. formula
+        let threshold = -20.0;
+        let knee_width = 6.0;
+        let ratio = 4.0;
+
+        let (scale, intercept) = downwards_soft_knee_coefficients(threshold, knee_width, ratio);
+
+        // scale = 1/(2*W*R) - 1/(2*W) where W = knee_width, R = ratio
+        let expected_scale = (2.0 * knee_width * ratio).recip() - (2.0 * knee_width).recip();
+        // intercept = -threshold + knee_width/2
+        let expected_intercept = -threshold + knee_width / 2.0;
+
+        approx::assert_relative_eq!(scale, expected_scale, epsilon = 1e-6);
+        approx::assert_relative_eq!(intercept, expected_intercept, epsilon = 1e-6);
+    }
+
+    #[test]
+    fn upwards_knee_coefficients_zero_width_returns_default_scale() {
+        let (scale, _intercept) = upwards_soft_knee_coefficients(-40.0, 0.0, 2.0);
+        approx::assert_relative_eq!(scale, 1.0, epsilon = 1e-6);
+    }
+
+    #[test]
+    fn upwards_knee_coefficients_formula() {
+        // Verify the negated formula for upwards compression
+        let threshold = -40.0;
+        let knee_width = 6.0;
+        let ratio = 2.0;
+
+        let (scale, intercept) = upwards_soft_knee_coefficients(threshold, knee_width, ratio);
+
+        // scale = -(1/(2*W*R) - 1/(2*W)) for upwards
+        let expected_scale = -((2.0 * knee_width * ratio).recip() - (2.0 * knee_width).recip());
+        // intercept = -threshold - knee_width/2 for upwards
+        let expected_intercept = -threshold - knee_width / 2.0;
+
+        approx::assert_relative_eq!(scale, expected_scale, epsilon = 1e-6);
+        approx::assert_relative_eq!(intercept, expected_intercept, epsilon = 1e-6);
+    }
+
+    #[test]
+    fn downwards_continuity_at_knee_boundaries() {
+        // Test that the soft knee is continuous at knee_start and knee_end
+        let threshold = -20.0;
+        let knee_width = 6.0;
+        let ratio = 4.0;
+        let knee_start = threshold - knee_width / 2.0;
+        let knee_end = threshold + knee_width / 2.0;
+
+        // At knee_start, the parabola should equal the input (unity gain)
+        let at_start = compress_downwards_with_params(knee_start, threshold, ratio, knee_width);
+        approx::assert_relative_eq!(at_start, knee_start, epsilon = 1e-4);
+
+        // At knee_end, the parabola should match the hard-knee compression
+        let at_end = compress_downwards_with_params(knee_end, threshold, ratio, knee_width);
+        let hard_knee_at_end = threshold + (knee_end - threshold) / ratio;
+        approx::assert_relative_eq!(at_end, hard_knee_at_end, epsilon = 1e-4);
+    }
+
+    #[test]
+    fn upwards_continuity_at_knee_boundaries() {
+        // Test that the soft knee is continuous at knee_start and knee_end
+        let threshold = -40.0;
+        let knee_width = 6.0;
+        let ratio = 2.0;
+        let knee_start = threshold - knee_width / 2.0;
+        let knee_end = threshold + knee_width / 2.0;
+
+        // At knee_end, the parabola should equal the input (unity gain)
+        let at_end = compress_upwards_with_params(knee_end, threshold, ratio, knee_width);
+        approx::assert_relative_eq!(at_end, knee_end, epsilon = 1e-4);
+
+        // At knee_start, the parabola should match the hard-knee compression
+        let at_start = compress_upwards_with_params(knee_start, threshold, ratio, knee_width);
+        let hard_knee_at_start = threshold + (knee_start - threshold) / ratio;
+        approx::assert_relative_eq!(at_start, hard_knee_at_start, epsilon = 1e-4);
+    }
+}

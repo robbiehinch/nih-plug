@@ -60,3 +60,76 @@ impl<'a> Curve<'a> {
         self.evaluate_ln(freq.ln())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_params(intercept: f32, center_frequency: f32, slope: f32, curve: f32) -> CurveParams {
+        CurveParams {
+            intercept,
+            center_frequency,
+            slope,
+            curve,
+        }
+    }
+
+    #[test]
+    fn evaluate_ln_at_center_returns_intercept() {
+        let params = make_params(-20.0, 1000.0, 5.0, 2.0);
+        let curve = Curve::new(&params);
+
+        // At center frequency, offset = 0, so result should equal intercept
+        let ln_center = 1000.0_f32.ln();
+        let result = curve.evaluate_ln(ln_center);
+
+        approx::assert_relative_eq!(result, -20.0, epsilon = 1e-6);
+    }
+
+    #[test]
+    fn evaluate_ln_one_octave_above_center() {
+        // One octave above means frequency * 2, so ln(2*f) - ln(f) = ln(2)
+        let params = make_params(-20.0, 1000.0, 5.0, 0.0); // curve = 0 to isolate slope
+        let curve = Curve::new(&params);
+
+        let ln_double = 2000.0_f32.ln();
+        let result = curve.evaluate_ln(ln_double);
+
+        // offset = ln(2000) - ln(1000) = ln(2)
+        // result = intercept + slope * ln(2) = -20 + 5 * ln(2)
+        let expected = -20.0 + 5.0 * 2.0_f32.ln();
+        approx::assert_relative_eq!(result, expected, epsilon = 1e-6);
+    }
+
+    #[test]
+    fn evaluate_ln_quadratic_term_behavior() {
+        // Test that the curve coefficient adds parabolic behavior
+        let params = make_params(0.0, 1000.0, 0.0, 2.0); // Only curve term active
+        let curve = Curve::new(&params);
+
+        // One octave above: offset = ln(2)
+        let ln_double = 2000.0_f32.ln();
+        let result_above = curve.evaluate_ln(ln_double);
+        let expected_above = 2.0 * 2.0_f32.ln() * 2.0_f32.ln();
+        approx::assert_relative_eq!(result_above, expected_above, epsilon = 1e-6);
+
+        // One octave below: offset = -ln(2), but squared so same magnitude
+        let ln_half = 500.0_f32.ln();
+        let result_below = curve.evaluate_ln(ln_half);
+        // offset = ln(500) - ln(1000) = -ln(2)
+        // result = 2 * (-ln(2))^2 = 2 * ln(2)^2 (same as above)
+        approx::assert_relative_eq!(result_below, expected_above, epsilon = 1e-6);
+    }
+
+    #[test]
+    fn evaluate_linear_matches_evaluate_ln() {
+        let params = make_params(-15.0, 500.0, 3.0, 1.5);
+        let curve = Curve::new(&params);
+
+        let freq = 750.0_f32;
+        let result_linear = curve.evaluate_linear(freq);
+        let result_ln = curve.evaluate_ln(freq.ln());
+
+        approx::assert_relative_eq!(result_linear, result_ln, epsilon = 1e-6);
+    }
+}
