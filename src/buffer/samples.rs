@@ -248,3 +248,156 @@ impl<'slice, 'sample> ChannelSamples<'slice, 'sample> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::buffer::Buffer;
+
+    /// Helper function to create a test buffer with the given number of channels and samples
+    fn create_test_buffer(num_channels: usize, num_samples: usize) -> (Buffer<'static>, Vec<Vec<f32>>) {
+        let mut real_buffers = vec![vec![0.0; num_samples]; num_channels];
+        let mut buffer = Buffer::default();
+
+        unsafe {
+            // SAFETY: We're creating test data that will live for the duration of the test
+            // We use transmute to extend the lifetime, which is safe in test context
+            let real_buffers_ptr = real_buffers.as_mut_ptr();
+            buffer.set_slices(num_samples, |output_slices| {
+                output_slices.clear();
+                for i in 0..num_channels {
+                    let channel_ptr = real_buffers_ptr.add(i);
+                    let channel_slice: &mut [f32] = &mut (**channel_ptr)[..];
+                    output_slices.push(std::mem::transmute::<&mut [f32], &'static mut [f32]>(channel_slice));
+                }
+            });
+        }
+
+        (buffer, real_buffers)
+    }
+
+    // SamplesIter tests
+    #[test]
+    fn samples_iter_order() {
+        let (mut buffer, mut real_buffers) = create_test_buffer(2, 4);
+
+        // Set up test data: channel 0 = [1, 2, 3, 4], channel 1 = [5, 6, 7, 8]
+        for (ch_idx, channel) in real_buffers.iter_mut().enumerate() {
+            for (s_idx, sample) in channel.iter_mut().enumerate() {
+                *sample = (ch_idx * 4 + s_idx + 1) as f32;
+            }
+        }
+
+        let mut collected = Vec::new();
+        for samples in buffer.iter_samples() {
+            let mut sample_values = Vec::new();
+            for sample in samples {
+                sample_values.push(*sample);
+            }
+            collected.push(sample_values);
+        }
+
+        // Should iterate sample-by-sample, then channel-by-channel
+        assert_eq!(collected, vec![
+            vec![1.0, 5.0],  // Sample 0: [ch0, ch1]
+            vec![2.0, 6.0],  // Sample 1: [ch0, ch1]
+            vec![3.0, 7.0],  // Sample 2: [ch0, ch1]
+            vec![4.0, 8.0],  // Sample 3: [ch0, ch1]
+        ]);
+    }
+
+    #[test]
+    fn samples_iter_total() {
+        let (mut buffer, _real_buffers) = create_test_buffer(2, 64);
+
+        let count = buffer.iter_samples().count();
+
+        // Should iterate over all samples
+        assert_eq!(count, 64);
+    }
+
+    #[test]
+    fn samples_iter_size_hint() {
+        let (mut buffer, _real_buffers) = create_test_buffer(2, 64);
+
+        let iter = buffer.iter_samples();
+        let (lower, upper) = iter.size_hint();
+
+        assert_eq!(lower, 64);
+        assert_eq!(upper, Some(64));
+    }
+
+    #[test]
+    fn samples_iter_exact_size() {
+        let (mut buffer, _real_buffers) = create_test_buffer(2, 64);
+
+        let iter = buffer.iter_samples();
+
+        assert_eq!(iter.len(), 64);
+    }
+
+    #[test]
+    fn samples_iter_reset() {
+        let (mut buffer, _real_buffers) = create_test_buffer(2, 4);
+
+        // First iteration
+        let count1 = buffer.iter_samples().count();
+
+        // Second iteration should work the same
+        let count2 = buffer.iter_samples().count();
+
+        assert_eq!(count1, 4);
+        assert_eq!(count2, 4);
+    }
+
+    #[test]
+    fn samples_iter_empty() {
+        let (mut buffer, _real_buffers) = create_test_buffer(2, 0);
+
+        let count = buffer.iter_samples().count();
+
+        assert_eq!(count, 0);
+    }
+
+    // ChannelSamples tests
+    #[test]
+    fn channel_samples_len() {
+        let (mut buffer, _real_buffers) = create_test_buffer(3, 4);
+
+        let mut samples_iter = buffer.iter_samples();
+        let channel_samples = samples_iter.next().unwrap();
+
+        assert_eq!(channel_samples.len(), 3);
+    }
+
+    #[test]
+    fn channel_samples_get_mut() {
+        let (mut buffer, _real_buffers) = create_test_buffer(2, 4);
+
+        let mut samples_iter = buffer.iter_samples();
+        let mut channel_samples = samples_iter.next().unwrap();
+
+        // Valid indices
+        assert!(channel_samples.get_mut(0).is_some());
+        assert!(channel_samples.get_mut(1).is_some());
+
+        // Invalid indices
+        assert!(channel_samples.get_mut(2).is_none());
+        assert!(channel_samples.get_mut(100).is_none());
+    }
+
+    #[test]
+    fn channel_samples_access() {
+        let (mut buffer, mut real_buffers) = create_test_buffer(2, 4);
+
+        // Set up test data
+        real_buffers[0][0] = 1.0;
+        real_buffers[1][0] = 2.0;
+
+        let mut samples_iter = buffer.iter_samples();
+        let channel_samples = samples_iter.next().unwrap();
+
+        // Access via iterator should match real data
+        let values: Vec<f32> = channel_samples.into_iter().map(|s| *s).collect();
+        assert_eq!(values, vec![1.0, 2.0]);
+    }
+}
