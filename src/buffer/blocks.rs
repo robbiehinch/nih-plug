@@ -330,3 +330,174 @@ impl<'slice, 'sample> Block<'slice, 'sample> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::buffer::Buffer;
+
+    /// Helper function to create a test buffer with the given number of channels and samples
+    fn create_test_buffer(num_channels: usize, num_samples: usize) -> (Buffer<'static>, Vec<Vec<f32>>) {
+        let mut real_buffers = vec![vec![0.0; num_samples]; num_channels];
+        let mut buffer = Buffer::default();
+
+        unsafe {
+            // SAFETY: We're creating test data that will live for the duration of the test
+            // We use transmute to extend the lifetime, which is safe in test context
+            let real_buffers_ptr = real_buffers.as_mut_ptr();
+            buffer.set_slices(num_samples, |output_slices| {
+                output_slices.clear();
+                for i in 0..num_channels {
+                    let channel_ptr = real_buffers_ptr.add(i);
+                    let channel_slice: &mut [f32] = &mut (**channel_ptr)[..];
+                    output_slices.push(std::mem::transmute::<&mut [f32], &'static mut [f32]>(channel_slice));
+                }
+            });
+        }
+
+        (buffer, real_buffers)
+    }
+
+    // BlocksIter tests
+    #[test]
+    fn blocks_iter_count() {
+        let (mut buffer, _real_buffers) = create_test_buffer(2, 100);
+        let max_block_size = 32;
+
+        let count = buffer.iter_blocks(max_block_size).count();
+
+        // 100 samples with max_block_size 32 should give 4 blocks (32, 32, 32, 4)
+        assert_eq!(count, 4);
+    }
+
+    #[test]
+    fn blocks_iter_sizes() {
+        let (mut buffer, _real_buffers) = create_test_buffer(2, 100);
+        let max_block_size = 32;
+
+        let blocks: Vec<usize> = buffer.iter_blocks(max_block_size)
+            .map(|(_, block)| block.samples())
+            .collect();
+
+        // First 3 blocks should be 32 samples, last should be 4
+        assert_eq!(blocks, vec![32, 32, 32, 4]);
+    }
+
+    #[test]
+    fn blocks_iter_offsets() {
+        let (mut buffer, _real_buffers) = create_test_buffer(2, 100);
+        let max_block_size = 32;
+
+        let offsets: Vec<usize> = buffer.iter_blocks(max_block_size)
+            .map(|(offset, _)| offset)
+            .collect();
+
+        // Offsets should be sequential
+        assert_eq!(offsets, vec![0, 32, 64, 96]);
+    }
+
+    #[test]
+    fn blocks_iter_size_hint() {
+        let (mut buffer, _real_buffers) = create_test_buffer(2, 100);
+        let max_block_size = 32;
+
+        let iter = buffer.iter_blocks(max_block_size);
+        let (lower, upper) = iter.size_hint();
+
+        assert_eq!(lower, 4);
+        assert_eq!(upper, Some(4));
+    }
+
+    #[test]
+    fn blocks_iter_exact_size() {
+        let (mut buffer, _real_buffers) = create_test_buffer(2, 100);
+        let max_block_size = 32;
+
+        let iter = buffer.iter_blocks(max_block_size);
+
+        assert_eq!(iter.len(), 4);
+    }
+
+    #[test]
+    fn blocks_iter_single_block() {
+        let (mut buffer, _real_buffers) = create_test_buffer(2, 16);
+        let max_block_size = 32;
+
+        let blocks: Vec<(usize, usize)> = buffer.iter_blocks(max_block_size)
+            .map(|(offset, block)| (offset, block.samples()))
+            .collect();
+
+        // Buffer smaller than max_block_size should give single block
+        assert_eq!(blocks, vec![(0, 16)]);
+    }
+
+    #[test]
+    fn blocks_iter_exact_fit() {
+        let (mut buffer, _real_buffers) = create_test_buffer(2, 32);
+        let max_block_size = 32;
+
+        let blocks: Vec<(usize, usize)> = buffer.iter_blocks(max_block_size)
+            .map(|(offset, block)| (offset, block.samples()))
+            .collect();
+
+        // Buffer exactly matching max_block_size
+        assert_eq!(blocks, vec![(0, 32)]);
+    }
+
+    #[test]
+    fn blocks_iter_perfect_division() {
+        let (mut buffer, _real_buffers) = create_test_buffer(2, 128);
+        let max_block_size = 32;
+
+        let blocks: Vec<(usize, usize)> = buffer.iter_blocks(max_block_size)
+            .map(|(offset, block)| (offset, block.samples()))
+            .collect();
+
+        // 128 / 32 = 4 perfect blocks
+        assert_eq!(blocks, vec![(0, 32), (32, 32), (64, 32), (96, 32)]);
+    }
+
+    #[test]
+    fn blocks_iter_empty_buffer() {
+        let (mut buffer, _real_buffers) = create_test_buffer(0, 0);
+        let max_block_size = 32;
+
+        let count = buffer.iter_blocks(max_block_size).count();
+
+        assert_eq!(count, 0);
+    }
+
+    // Block accessor tests
+    #[test]
+    fn block_get_bounds_checking() {
+        let (mut buffer, _real_buffers) = create_test_buffer(2, 64);
+        let max_block_size = 32;
+
+        let mut blocks = buffer.iter_blocks(max_block_size);
+        let (_, block) = blocks.next().unwrap();
+
+        // Valid channel indices
+        assert!(block.get(0).is_some());
+        assert!(block.get(1).is_some());
+
+        // Invalid channel index
+        assert!(block.get(2).is_none());
+        assert!(block.get(100).is_none());
+    }
+
+    #[test]
+    fn block_samples_channels() {
+        let (mut buffer, _real_buffers) = create_test_buffer(3, 64);
+        let max_block_size = 32;
+
+        let mut blocks = buffer.iter_blocks(max_block_size);
+        let (_, block) = blocks.next().unwrap();
+
+        assert_eq!(block.channels(), 3);
+        assert_eq!(block.samples(), 32);
+
+        // Second block should have same channels but potentially different samples
+        let (_, block2) = blocks.next().unwrap();
+        assert_eq!(block2.channels(), 3);
+        assert_eq!(block2.samples(), 32);
+    }
+}
