@@ -14,6 +14,18 @@ pub struct PhaseData {
     pub is_frozen: bool,
     /// Current sample rate
     pub sample_rate: f32,
+
+    // Correction metrics
+    /// Phase differences after correction has been applied
+    pub corrected_phase_diff: [f32; NUM_BINS],
+    /// Phase accuracy score (0.0 = poor, 1.0 = perfect)
+    pub phase_accuracy_score: f32,
+    /// Group delay flatness (0.0 = poor, 1.0 = perfect)
+    pub group_delay_flatness: f32,
+    /// Overall correction quality score (0.0 = poor, 1.0 = perfect)
+    pub overall_quality_score: f32,
+    /// Whether phase correction is currently active
+    pub correction_active: bool,
 }
 
 impl Default for PhaseData {
@@ -23,6 +35,11 @@ impl Default for PhaseData {
             num_bins: NUM_BINS,
             is_frozen: false,
             sample_rate: 44100.0,
+            corrected_phase_diff: [0.0; NUM_BINS],
+            phase_accuracy_score: 0.0,
+            group_delay_flatness: 0.0,
+            overall_quality_score: 0.0,
+            correction_active: false,
         }
     }
 }
