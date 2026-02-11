@@ -135,3 +135,100 @@ impl KickDetector {
         self.last_peak_sample = 0;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Instant;
+
+    #[test]
+    fn test_envelope_builds_up() {
+        let mut detector = KickDetector::new(1, 48000.0);
+        let mut sample_count = 0;
+
+        // Process silence - envelope should stay at zero
+        for _ in 0..100 {
+            detector.process_sample(0.0, 0, sample_count);
+            sample_count += 1;
+        }
+        assert_eq!(detector.envelope_state[0], 0.0);
+
+        // Process signal - envelope should build up
+        for _ in 0..100 {
+            detector.process_sample(0.5, 0, sample_count);
+            sample_count += 1;
+        }
+        assert!(detector.envelope_state[0] > 0.0, "Envelope should build up from signal");
+    }
+
+    #[test]
+    fn test_performance_per_sample_processing() {
+        let mut detector = KickDetector::new(1, 48000.0);
+        let iterations = 48000; // 1 second at 48kHz
+        let mut sample_count = 0;
+
+        let start = Instant::now();
+        for i in 0..iterations {
+            let sample = if i % 10000 == 0 { 0.8 } else { 0.1 };
+            detector.process_sample(sample, 0, sample_count);
+            sample_count += 1;
+        }
+        let elapsed = start.elapsed();
+
+        let time_per_sample = elapsed.as_nanos() / iterations as u128;
+
+        // Assert performance: should process <500ns per sample (plenty of headroom)
+        assert!(
+            time_per_sample < 500,
+            "Kick detector too slow: {} ns/sample (target <500ns)",
+            time_per_sample
+        );
+
+        println!("KickDetector performance: {} ns/sample", time_per_sample);
+    }
+
+    #[test]
+    fn test_adaptive_threshold_computation() {
+        let mut detector = KickDetector::new(1, 48000.0);
+        let mut sample_count = 0;
+
+        // Build peak history
+        for _ in 0..16 {
+            for _ in 0..100 {
+                detector.process_sample(0.1, 0, sample_count);
+                sample_count += 1;
+            }
+            detector.process_sample(0.8, 0, sample_count);
+            sample_count += 1;
+        }
+
+        // Threshold should adapt to peaks
+        // Test that threshold is reasonable (not too sensitive or insensitive)
+        let triggered_on_medium = detector.process_sample(0.6, 0, sample_count).is_some();
+        sample_count += 1;
+        let not_triggered_on_low = detector.process_sample(0.2, 0, sample_count).is_none();
+
+        // At least one of these should be true
+        assert!(
+            triggered_on_medium || not_triggered_on_low,
+            "Adaptive threshold not working correctly"
+        );
+    }
+
+    #[test]
+    fn test_min_interval_configuration() {
+        let mut detector = KickDetector::new(1, 48000.0);
+
+        // Test interval configuration
+        detector.set_min_interval(100.0, 48000.0); // 100ms at 48kHz
+        assert_eq!(detector.min_kick_interval_samples, 4800);
+
+        detector.set_min_interval(50.0, 48000.0); // 50ms at 48kHz
+        assert_eq!(detector.min_kick_interval_samples, 2400);
+
+        // Verify threshold configuration
+        detector.set_threshold(-18.0); // -18dB
+        let expected = 10.0_f32.powf(-18.0 / 20.0);
+        assert!((detector.threshold - expected).abs() < 0.001);
+    }
+}

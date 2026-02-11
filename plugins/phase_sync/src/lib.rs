@@ -17,6 +17,16 @@ use phase_controller::{AdaptationMode, PhaseController};
 use phase_rotator::{PhaseRotator, f32x2};
 use visualization_data::{VisualizationData, KickMarker, PhasePoint};
 
+// Expose internal components for benchmarking and testing
+// Note: These are internal implementation details, not part of the public API
+pub mod bench_helpers {
+    pub use crate::bass_analyzer::BassAnalyzer;
+    pub use crate::kick_detector::KickDetector;
+    pub use crate::lookahead_buffer::LookaheadBuffer;
+    pub use crate::phase_controller::{AdaptationMode, PhaseController};
+    pub use crate::phase_rotator::{f32x2, PhaseRotator};
+}
+
 /// Lookahead buffer size in samples (~85ms at 48kHz)
 const LOOKAHEAD_SIZE: usize = 4096;
 
@@ -41,6 +51,10 @@ pub struct PhaseSync {
     lookahead_buffers: Vec<LookaheadBuffer>,
     phase_rotators: Vec<PhaseRotator>,
     phase_controllers: Vec<PhaseController>,
+
+    // Pre-allocated buffers for bass analysis (one per track)
+    // Reused on each kick event to avoid allocations
+    bass_sample_buffers: Vec<Vec<f32>>,
 
     // GUI communication
     visualization_data_input: triple_buffer::Input<VisualizationData>,
@@ -113,6 +127,7 @@ impl Default for PhaseSync {
             lookahead_buffers: vec![LookaheadBuffer::new(2, LOOKAHEAD_SIZE)],
             phase_rotators: vec![PhaseRotator::new()],
             phase_controllers: vec![PhaseController::new()],
+            bass_sample_buffers: vec![Vec::with_capacity(BASS_LOOKBACK_SIZE)],
 
             visualization_data_input,
             visualization_data_output: Arc::new(Mutex::new(visualization_data_output)),
@@ -383,6 +398,12 @@ impl Plugin for PhaseSync {
             self.phase_controllers.push(PhaseController::new());
         }
 
+        // Initialize pre-allocated bass sample buffers
+        self.bass_sample_buffers.clear();
+        for _ in 0..self.num_bass_tracks {
+            self.bass_sample_buffers.push(Vec::with_capacity(BASS_LOOKBACK_SIZE));
+        }
+
         // Set latency (same for all tracks)
         context.set_latency_samples(LOOKAHEAD_SIZE as u32);
 
@@ -404,6 +425,9 @@ impl Plugin for PhaseSync {
         }
         for controller in &mut self.phase_controllers {
             controller.reset();
+        }
+        for buffer in &mut self.bass_sample_buffers {
+            buffer.clear();
         }
 
         self.sample_counter = 0;
@@ -491,13 +515,17 @@ impl Plugin for PhaseSync {
             // === STEP 3: On kick detection, analyze all bass peaks ===
             if kick_detected {
                 for track_idx in 0..self.num_bass_tracks {
-                    // Get recent bass samples for this track
-                    let bass_buffer = self.lookahead_buffers[track_idx]
-                        .get_recent_samples(0, BASS_LOOKBACK_SIZE);
+                    // Get recent bass samples into pre-allocated buffer (zero allocations)
+                    self.lookahead_buffers[track_idx].get_recent_samples_into(
+                        0,
+                        BASS_LOOKBACK_SIZE,
+                        &mut self.bass_sample_buffers[track_idx]
+                    );
+                    let bass_buffer = &self.bass_sample_buffers[track_idx];
 
-                    // Analyze bass peak timing
-                    if let Some(bass_peak) = self.bass_analyzers[track_idx].analyze_bass_timing(
-                        &bass_buffer,
+                    // Analyze bass peak timing (using optimized O(N) sliding window algorithm)
+                    if let Some(bass_peak) = self.bass_analyzers[track_idx].analyze_bass_timing_optimized(
+                        bass_buffer,
                         current_sample.saturating_sub(BASS_LOOKBACK_SIZE),
                     ) {
                         // Get current phase before update

@@ -41,6 +41,29 @@ impl LookaheadBuffer {
         result
     }
 
+    /// Copy recent samples into a pre-allocated buffer (zero-allocation version)
+    /// This avoids allocating a new Vec on every call, improving performance
+    /// for frequent operations like bass analysis on kick events.
+    pub fn get_recent_samples_into(
+        &self,
+        channel: usize,
+        lookback_samples: usize,
+        output: &mut Vec<f32>,
+    ) {
+        let lookback = lookback_samples.min(self.buffer_size);
+        output.clear();
+
+        // Reserve capacity if needed (rare, only on first call or size increase)
+        if output.capacity() < lookback {
+            output.reserve(lookback - output.capacity());
+        }
+
+        for i in 0..lookback {
+            let pos = (self.write_pos + self.buffer_size - lookback + i) % self.buffer_size;
+            output.push(self.buffers[channel][pos]);
+        }
+    }
+
     pub fn reset(&mut self) {
         for channel in &mut self.buffers {
             channel.fill(0.0);
