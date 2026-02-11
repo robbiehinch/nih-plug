@@ -69,8 +69,8 @@ fn draw_phase_scale(canvas: &mut Canvas, bounds: BoundingBox) {
         path.move_to(bounds.x, y);
         path.line_to(bounds.x + bounds.w, y);
 
-        let alpha = if phase == 0.0 { 150 } else { 50 };
-        let paint = vg::Paint::color(vg::Color::rgba(80, 80, 100, alpha));
+        let alpha = if phase == 0.0 { 200 } else { 100 };
+        let paint = vg::Paint::color(vg::Color::rgba(120, 120, 140, alpha));
         canvas.stroke_path(&path, &paint.with_line_width(1.0));
     }
 }
@@ -101,8 +101,8 @@ fn draw_phase_history(canvas: &mut Canvas, data: &VisualizationData, bounds: Bou
     }
 
     // Stroke the phase history
-    let paint = vg::Paint::color(vg::Color::rgba(100, 200, 255, 200));
-    canvas.stroke_path(&path, &paint.with_line_width(2.0));
+    let paint = vg::Paint::color(vg::Color::rgba(30, 100, 200, 255));
+    canvas.stroke_path(&path, &paint.with_line_width(2.5));
 }
 
 fn draw_current_phase(canvas: &mut Canvas, current_phase: f32, bounds: BoundingBox) {
@@ -113,11 +113,11 @@ fn draw_current_phase(canvas: &mut Canvas, current_phase: f32, bounds: BoundingB
     let mut path = vg::Path::new();
     path.circle(x, y, 5.0);
 
-    let paint = vg::Paint::color(vg::Color::rgba(100, 255, 100, 255));
+    let paint = vg::Paint::color(vg::Color::rgba(50, 200, 50, 255));
     canvas.fill_path(&path, &paint);
 
     // Draw outline
-    let outline_paint = vg::Paint::color(vg::Color::rgba(50, 150, 50, 255));
+    let outline_paint = vg::Paint::color(vg::Color::rgba(20, 120, 20, 255));
     canvas.stroke_path(&path, &outline_paint.with_line_width(2.0));
 }
 
@@ -134,8 +134,8 @@ fn draw_target_phase(canvas: &mut Canvas, target_phase: f32, bounds: BoundingBox
         path.move_to(x, y);
         path.line_to((x + dash_length).min(bounds.x + bounds.w), y);
 
-        let paint = vg::Paint::color(vg::Color::rgba(255, 200, 100, 150));
-        canvas.stroke_path(&path, &paint.with_line_width(1.5));
+        let paint = vg::Paint::color(vg::Color::rgba(200, 120, 20, 200));
+        canvas.stroke_path(&path, &paint.with_line_width(2.0));
 
         x += dash_length + gap_length;
     }
@@ -154,7 +154,7 @@ fn draw_phase_labels(canvas: &mut Canvas, bounds: BoundingBox) {
         let y = phase_to_y(*phase, bounds);
 
         // Create text paint
-        let mut paint = vg::Paint::color(vg::Color::rgba(180, 180, 200, 255));
+        let mut paint = vg::Paint::color(vg::Color::rgba(60, 60, 80, 255));
         paint.set_font_size(12.0);
         paint.set_text_align(vg::Align::Right);
         paint.set_text_baseline(vg::Baseline::Middle);
