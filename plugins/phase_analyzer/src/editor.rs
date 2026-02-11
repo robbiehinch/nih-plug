@@ -10,8 +10,8 @@ use crate::PhaseAnalyzerParams;
 
 mod analyzer;
 
-const EDITOR_WIDTH: u32 = 800;
-const EDITOR_HEIGHT: u32 = 500;
+const EDITOR_WIDTH: u32 = 1200;
+const EDITOR_HEIGHT: u32 = 200;
 
 #[derive(Lens, Clone)]
 pub struct Data {
@@ -44,20 +44,20 @@ pub(crate) fn create(
                 Label::new(cx, "Phase Analyzer")
                     .font_family(vec![FamilyOwned::Name(String::from(assets::NOTO_SANS))])
                     .font_weight(FontWeightKeyword::Thin)
-                    .font_size(30.0)
-                    .height(Pixels(50.0))
+                    .font_size(20.0)
+                    .height(Pixels(30.0))
                     .child_top(Stretch(1.0))
                     .child_bottom(Pixels(0.0))
-                    .left(Pixels(20.0));
+                    .left(Pixels(15.0));
 
                 // Analyze button - mapped to the analyze parameter
                 ParamButton::new(cx, Data::params, |params| &params.analyze);
 
             })
-            .height(Pixels(60.0))
+            .height(Pixels(30.0))
             .child_left(Stretch(1.0))
             .child_right(Stretch(1.0))
-            .col_between(Pixels(20.0));
+            .col_between(Pixels(10.0));
 
             // Main visualization widget
             analyzer::PhaseAnalyzer::new(cx, Data::phase_data, Data::sample_rate)

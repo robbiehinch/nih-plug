@@ -6,11 +6,11 @@ use std::sync::{Arc, Mutex};
 use crate::phase_data::PhaseData;
 
 const BORDER_WIDTH: f32 = 2.0;
-const STRIP_HEIGHT: f32 = 60.0;
-const LABEL_FONT_SIZE: f32 = 12.0;
-const SECTION_FONT_SIZE: f32 = 13.0;
-const STRIP_MARGIN: f32 = 15.0;
-const SECTION_GAP: f32 = 20.0;
+const STRIP_HEIGHT: f32 = 50.0;
+const LABEL_FONT_SIZE: f32 = 11.0;
+const SECTION_FONT_SIZE: f32 = 11.0;
+const STRIP_MARGIN: f32 = 10.0;
+const SECTION_GAP: f32 = 8.0;
 
 pub struct PhaseAnalyzer {
     phase_data: Arc<Mutex<triple_buffer::Output<PhaseData>>>,
@@ -52,17 +52,17 @@ impl View for PhaseAnalyzer {
         let strip_w = bounds.w - 2.0 * STRIP_MARGIN;
 
         // Calculate total content height and center it vertically
-        let section_label_h = 18.0;
-        let freq_label_h = 20.0;
-        let legend_h = 28.0;
+        let section_label_h = 15.0;
+        let freq_label_h = 16.0;
+        let legend_h = 20.0;
         let total_content_h = section_label_h
             + STRIP_HEIGHT
             + SECTION_GAP
             + section_label_h
             + STRIP_HEIGHT
-            + 12.0
+            + 6.0
             + freq_label_h
-            + 10.0
+            + 4.0
             + legend_h;
         let start_y = bounds.y + (bounds.h - total_content_h) / 2.0;
         let mut y = start_y;
@@ -81,11 +81,11 @@ impl View for PhaseAnalyzer {
         draw_strip_background(canvas, strip_x, y, strip_w, STRIP_HEIGHT);
         draw_gradient_strip(canvas, data, strip_x, y, strip_w, STRIP_HEIGHT, nyquist);
         draw_strip_border(canvas, strip_x, y, strip_w, STRIP_HEIGHT);
-        y += STRIP_HEIGHT + 12.0;
+        y += STRIP_HEIGHT + 6.0;
 
         // --- Frequency labels ---
         draw_frequency_labels(canvas, strip_x, y, strip_w, nyquist);
-        y += freq_label_h + 10.0;
+        y += freq_label_h + 4.0;
 
         // --- Color legend ---
         draw_color_legend(canvas, strip_x, y, strip_w);
@@ -250,7 +250,7 @@ fn draw_frequency_labels(canvas: &mut Canvas, strip_x: f32, y: f32, strip_w: f32
         // Label
         let text_paint =
             vg::Paint::color(vg::Color::rgbf(0.7, 0.7, 0.7)).with_font_size(LABEL_FONT_SIZE);
-        let _ = canvas.fill_text(fx - 10.0, y + 18.0, &label, &text_paint);
+        let _ = canvas.fill_text(fx - 10.0, y + 14.0, &label, &text_paint);
     }
 }
 
@@ -258,8 +258,8 @@ fn draw_frequency_labels(canvas: &mut Canvas, strip_x: f32, y: f32, strip_w: f32
 fn draw_color_legend(canvas: &mut Canvas, strip_x: f32, y: f32, strip_w: f32) {
     use std::f32::consts::PI;
 
-    let legend_w = strip_w * 0.4;
-    let legend_h = 10.0;
+    let legend_w = strip_w * 0.5;
+    let legend_h = 8.0;
     let legend_x = strip_x + (strip_w - legend_w) / 2.0;
 
     // Draw the gradient bar in small steps
@@ -277,9 +277,9 @@ fn draw_color_legend(canvas: &mut Canvas, strip_x: f32, y: f32, strip_w: f32) {
     }
 
     // Labels below the legend bar
-    let label_y = y + legend_h + 12.0;
+    let label_y = y + legend_h + 10.0;
     let text_paint =
-        vg::Paint::color(vg::Color::rgbf(0.7, 0.7, 0.7)).with_font_size(11.0);
+        vg::Paint::color(vg::Color::rgbf(0.7, 0.7, 0.7)).with_font_size(10.0);
     let _ = canvas.fill_text(legend_x - 5.0, label_y, "\u{2212}180\u{b0}", &text_paint);
     let _ = canvas.fill_text(
         legend_x + legend_w / 2.0 - 5.0,
