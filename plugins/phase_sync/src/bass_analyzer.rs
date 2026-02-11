@@ -74,3 +74,65 @@ impl BassAnalyzer {
         self.peak_history.clear();
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_basic_peak_detection() {
+        let mut analyzer = BassAnalyzer::new(100);
+
+        // Create buffer with clear peak in middle
+        let mut buffer = vec![0.1f32; 1000];
+        for i in 450..550 {
+            buffer[i] = 0.8; // Peak in middle
+        }
+
+        let result = analyzer.analyze_bass_timing(&buffer, 0);
+        assert!(result.is_some());
+
+        let peak = result.unwrap();
+        // Peak should be detected around position 500 (middle of peak region)
+        assert!(peak.sample_position > 400 && peak.sample_position < 600);
+    }
+
+    #[test]
+    fn test_window_size_scaling() {
+        let mut analyzer = BassAnalyzer::new(50);
+        let buffer = vec![0.5f32; 1000];
+
+        // Should work with window size
+        let result1 = analyzer.analyze_bass_timing(&buffer, 0);
+        assert!(result1.is_some());
+
+        // Change window size
+        analyzer.set_window_size(200);
+        let result2 = analyzer.analyze_bass_timing(&buffer, 0);
+        assert!(result2.is_some());
+    }
+
+    #[test]
+    fn test_insufficient_buffer() {
+        let mut analyzer = BassAnalyzer::new(100);
+        let buffer = vec![0.5f32; 50]; // Too small
+
+        let result = analyzer.analyze_bass_timing(&buffer, 0);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_peak_history_limit() {
+        let mut analyzer = BassAnalyzer::new(50);
+        let buffer = vec![0.5f32; 1000];
+
+        // Trigger many peaks
+        for _ in 0..20 {
+            analyzer.analyze_bass_timing(&buffer, 0);
+        }
+
+        // History should be limited (internal detail, but we can verify it doesn't crash)
+        // This test mainly ensures no memory leak or panic
+        assert_eq!(analyzer.peak_history.len(), 16); // Max capacity
+    }
+}

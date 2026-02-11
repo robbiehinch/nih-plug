@@ -17,6 +17,16 @@ use phase_controller::{AdaptationMode, PhaseController};
 use phase_rotator::{PhaseRotator, f32x2};
 use visualization_data::{VisualizationData, KickMarker, PhasePoint};
 
+// Expose internal components for benchmarking and testing
+// Note: These are internal implementation details, not part of the public API
+pub mod bench_helpers {
+    pub use crate::bass_analyzer::BassAnalyzer;
+    pub use crate::kick_detector::KickDetector;
+    pub use crate::lookahead_buffer::LookaheadBuffer;
+    pub use crate::phase_controller::{AdaptationMode, PhaseController};
+    pub use crate::phase_rotator::{f32x2, PhaseRotator};
+}
+
 /// Lookahead buffer size in samples (~85ms at 48kHz)
 const LOOKAHEAD_SIZE: usize = 4096;
 

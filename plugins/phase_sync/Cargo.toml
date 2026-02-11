@@ -13,3 +13,13 @@ nih_plug = { path = "../..", features = ["standalone"] }
 nih_plug_vizia = { path = "../../nih_plug_vizia" }
 triple_buffer = "6.2"
 atomic_float = "0.1"
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[features]
+bench = []
+
+[[bench]]
+name = "phase_sync_benchmarks"
+harness = false

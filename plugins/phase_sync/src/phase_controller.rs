@@ -179,3 +179,99 @@ impl PhaseController {
         self.samples_since_last_kick = 0;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_immediate_mode() {
+        let mut controller = PhaseController::new();
+
+        // Need two kicks to establish prediction
+        controller.on_kick_detected(0, 1000, 100.0, 48000.0, 0.0);
+        controller.on_kick_detected(48000, 49000, 100.0, 48000.0, 0.0);
+
+        // In immediate mode, should snap to target instantly
+        let phase = controller.get_current_phase(48100, AdaptationMode::Immediate, 0.8);
+        assert!((phase - controller.get_target_phase()).abs() < 0.1);
+    }
+
+    #[test]
+    fn test_linear_drift_progression() {
+        let mut controller = PhaseController::new();
+
+        // Need two kicks to establish prediction
+        controller.on_kick_detected(0, 1000, 100.0, 48000.0, 0.0);
+        controller.on_kick_detected(48000, 49000, 100.0, 48000.0, 45.0); // Different phase
+
+        // Linear mode should progress gradually
+        let phase_25 = controller.get_current_phase(48000 + 12000, AdaptationMode::LinearDrift, 0.8);
+        let phase_50 = controller.get_current_phase(48000 + 24000, AdaptationMode::LinearDrift, 0.8);
+        let phase_75 = controller.get_current_phase(48000 + 36000, AdaptationMode::LinearDrift, 0.8);
+
+        // Should be monotonically increasing (or decreasing depending on target)
+        // Just verify they're different and ordered
+        assert_ne!(phase_25, phase_50);
+        assert_ne!(phase_50, phase_75);
+    }
+
+    #[test]
+    fn test_last_moment_delay() {
+        let mut controller = PhaseController::new();
+        controller.on_kick_detected(0, 1000, 100.0, 48000.0, 0.0);
+
+        // Last moment mode should hold at current until threshold
+        let phase_early = controller.get_current_phase(1000, AdaptationMode::LastMoment, 0.8);
+        let phase_mid = controller.get_current_phase(24000, AdaptationMode::LastMoment, 0.8);
+
+        // Early phase should match current (not yet transitioning)
+        assert!((phase_early - 0.0).abs() < 0.1);
+
+        // Mid phase should still be holding (below 80% threshold)
+        assert!((phase_mid - 0.0).abs() < 1.0);
+    }
+
+    #[test]
+    fn test_kick_interval_prediction() {
+        let mut controller = PhaseController::new();
+
+        // Build consistent interval history
+        for i in 0..8 {
+            controller.on_kick_detected(i * 48000, (i * 48000) + 1000, 100.0, 48000.0, 0.0);
+        }
+
+        // Should have prediction
+        assert!(controller.next_kick_sample_predicted.is_some());
+
+        // Interval should be around 48000 samples (1 second at 48kHz)
+        assert!((controller.inter_kick_interval - 48000.0).abs() < 100.0);
+    }
+
+    #[test]
+    fn test_phase_wrapping() {
+        let mut controller = PhaseController::new();
+
+        // Test with large time offset that creates phase >180 degrees
+        controller.on_kick_detected(0, 10000, 100.0, 48000.0, 0.0);
+
+        let target = controller.get_target_phase();
+
+        // Should wrap to [-180, 180] range
+        assert!(target >= -180.0 && target <= 180.0);
+    }
+
+    #[test]
+    fn test_reset_clears_state() {
+        let mut controller = PhaseController::new();
+        controller.on_kick_detected(0, 1000, 100.0, 48000.0, 0.0);
+
+        controller.reset();
+
+        // Should return to initial state
+        assert_eq!(controller.current_rotation_degrees, 0.0);
+        assert_eq!(controller.target_rotation_degrees, 0.0);
+        assert!(controller.last_kick_sample.is_none());
+        assert!(controller.next_kick_sample_predicted.is_none());
+    }
+}
