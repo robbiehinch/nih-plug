@@ -77,8 +77,8 @@ fn draw_waveform(canvas: &mut Canvas, data: &VisualizationData, bounds: Bounding
     }
 
     // Stroke the waveform
-    let paint = vg::Paint::color(vg::Color::rgba(100, 200, 255, 200));
-    canvas.stroke_path(&path, &paint.with_line_width(1.5));
+    let paint = vg::Paint::color(vg::Color::rgba(30, 100, 200, 255));
+    canvas.stroke_path(&path, &paint.with_line_width(2.0));
 }
 
 fn draw_kick_markers(canvas: &mut Canvas, data: &VisualizationData, bounds: BoundingBox) {
@@ -99,17 +99,17 @@ fn draw_kick_markers(canvas: &mut Canvas, data: &VisualizationData, bounds: Boun
         path.move_to(x, bounds.y);
         path.line_to(x, bounds.y + bounds.h);
 
-        // Color based on kick level (brighter = louder)
+        // Color based on kick level (darker = louder)
         let alpha = (kick.level * 255.0).min(255.0) as u8;
-        let paint = vg::Paint::color(vg::Color::rgba(255, 100, 100, alpha));
-        canvas.stroke_path(&path, &paint.with_line_width(2.0));
+        let paint = vg::Paint::color(vg::Color::rgba(220, 50, 50, alpha));
+        canvas.stroke_path(&path, &paint.with_line_width(2.5));
     }
 
     // Flash effect when kick detected
     if data.kick_detected_flash {
         let mut path = vg::Path::new();
         path.rect(bounds.x, bounds.y, bounds.w, bounds.h);
-        let paint = vg::Paint::color(vg::Color::rgba(255, 255, 255, 30));
+        let paint = vg::Paint::color(vg::Color::rgba(255, 200, 200, 80));
         canvas.fill_path(&path, &paint);
     }
 }
@@ -135,8 +135,8 @@ fn draw_predicted_kick(canvas: &mut Canvas, next_kick_time: f32, bounds: Boundin
         path.move_to(x, y);
         path.line_to(x, (y + dash_length).min(bounds.y + bounds.h));
 
-        let paint = vg::Paint::color(vg::Color::rgba(255, 200, 100, 150));
-        canvas.stroke_path(&path, &paint.with_line_width(1.5));
+        let paint = vg::Paint::color(vg::Color::rgba(200, 120, 20, 200));
+        canvas.stroke_path(&path, &paint.with_line_width(2.0));
 
         y += dash_length + gap_length;
     }
@@ -149,6 +149,6 @@ fn draw_center_line(canvas: &mut Canvas, bounds: BoundingBox) {
     path.move_to(bounds.x, center_y);
     path.line_to(bounds.x + bounds.w, center_y);
 
-    let paint = vg::Paint::color(vg::Color::rgba(80, 80, 100, 100));
+    let paint = vg::Paint::color(vg::Color::rgba(150, 150, 160, 150));
     canvas.stroke_path(&path, &paint.with_line_width(1.0));
 }

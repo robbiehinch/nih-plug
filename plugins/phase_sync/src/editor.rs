@@ -47,7 +47,8 @@ pub(crate) fn create(
                     .height(Pixels(50.0))
                     .child_top(Stretch(1.0))
                     .child_bottom(Pixels(0.0))
-                    .left(Pixels(20.0));
+                    .left(Pixels(20.0))
+                    .color(Color::rgb(30, 30, 40));
             })
             .height(Pixels(60.0))
             .child_left(Stretch(1.0))
@@ -60,15 +61,16 @@ pub(crate) fn create(
                     Label::new(cx, "Bass Waveform & Kick Detection")
                         .font_size(14.0)
                         .height(Pixels(20.0))
-                        .left(Pixels(10.0));
+                        .left(Pixels(10.0))
+                        .color(Color::rgb(40, 40, 50));
 
                     waveform_view::WaveformView::new(
                         cx,
                         Data::visualization_data,
                         Data::sample_rate,
                     )
-                    .background_color(Color::rgb(20, 20, 30))
-                    .border_color(Color::rgb(60, 60, 80))
+                    .background_color(Color::rgb(250, 250, 252))
+                    .border_color(Color::rgb(180, 180, 190))
                     .border_width(Pixels(1.0));
                 })
                 .width(Stretch(2.0))
@@ -80,15 +82,16 @@ pub(crate) fn create(
                     Label::new(cx, "Phase Rotation")
                         .font_size(14.0)
                         .height(Pixels(20.0))
-                        .left(Pixels(10.0));
+                        .left(Pixels(10.0))
+                        .color(Color::rgb(40, 40, 50));
 
                     phase_meter::PhaseMeter::new(
                         cx,
                         Data::visualization_data,
                         Data::sample_rate,
                     )
-                    .background_color(Color::rgb(20, 20, 30))
-                    .border_color(Color::rgb(60, 60, 80))
+                    .background_color(Color::rgb(250, 250, 252))
+                    .border_color(Color::rgb(180, 180, 190))
                     .border_width(Pixels(1.0));
                 })
                 .width(Stretch(1.0))
@@ -106,7 +109,8 @@ pub(crate) fn create(
                     Label::new(cx, "Kick Detection")
                         .font_size(16.0)
                         .font_weight(FontWeightKeyword::Bold)
-                        .height(Pixels(25.0));
+                        .height(Pixels(25.0))
+                        .color(Color::rgb(30, 30, 40));
 
                     ParamSlider::new(cx, Data::params, |p| &p.kick_threshold);
                     ParamSlider::new(cx, Data::params, |p| &p.kick_attack_ms);
@@ -123,7 +127,8 @@ pub(crate) fn create(
                     Label::new(cx, "Phase Rotation")
                         .font_size(16.0)
                         .font_weight(FontWeightKeyword::Bold)
-                        .height(Pixels(25.0));
+                        .height(Pixels(25.0))
+                        .color(Color::rgb(30, 30, 40));
 
                     ParamSlider::new(cx, Data::params, |p| &p.center_frequency);
                     ParamSlider::new(cx, Data::params, |p| &p.phase_amount);
@@ -140,7 +145,8 @@ pub(crate) fn create(
                     Label::new(cx, "Adaptation")
                         .font_size(16.0)
                         .font_weight(FontWeightKeyword::Bold)
-                        .height(Pixels(25.0));
+                        .height(Pixels(25.0))
+                        .color(Color::rgb(30, 30, 40));
 
                     ParamSlider::new(cx, Data::params, |p| &p.adaptation_mode);
                     ParamSlider::new(cx, Data::params, |p| &p.transition_threshold);
@@ -158,6 +164,6 @@ pub(crate) fn create(
             .top(Pixels(10.0));
         })
         .row_between(Pixels(10.0))
-        .background_color(Color::rgb(30, 30, 40));
+        .background_color(Color::rgb(240, 240, 245));
     })
 }
