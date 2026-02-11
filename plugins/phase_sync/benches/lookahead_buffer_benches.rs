@@ -51,6 +51,29 @@ pub fn bench_lookahead_buffer(c: &mut Criterion) {
         );
     }
 
+    // === OPTIMIZED VERSION BENCHMARKS ===
+    // Benchmark get_recent_samples_into (pre-allocated buffer, zero allocations)
+    for sample_count in [512, 1024, 2048, 4096] {
+        group.bench_with_input(
+            BenchmarkId::new("get_recent_samples_into", sample_count),
+            &sample_count,
+            |b, &count| {
+                let mut buffer = LookaheadBuffer::new(2, 4096);
+                for _ in 0..4096 {
+                    buffer.write_sample(0, 0.5);
+                    buffer.write_sample(1, -0.3);
+                    buffer.advance_write_pos();
+                }
+
+                let mut output = Vec::with_capacity(count);
+
+                b.iter(|| {
+                    buffer.get_recent_samples_into(0, black_box(count), black_box(&mut output));
+                });
+            },
+        );
+    }
+
     // Benchmark multi-track scenario (8 buffers)
     group.bench_function("write_8_tracks", |b| {
         let mut buffers: Vec<LookaheadBuffer> = (0..8)

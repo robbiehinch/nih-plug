@@ -42,5 +42,43 @@ pub fn bench_bass_analyzer(c: &mut Criterion) {
         );
     }
 
+    // === OPTIMIZED VERSION BENCHMARKS ===
+    // Benchmark optimized sliding window version with varying window sizes
+    for window_ms in [10.0, 25.0, 50.0, 100.0] {
+        group.bench_with_input(
+            BenchmarkId::new("find_peak_optimized", format!("{}ms", window_ms)),
+            &window_ms,
+            |b, &window_ms| {
+                let mut analyzer = BassAnalyzer::new(1024);
+                let window_samples = (window_ms * 48.0) as usize;
+                analyzer.set_window_size(window_samples);
+                let buffer_size = 4096;
+                let buffer = vec![0.3f32; buffer_size];
+
+                b.iter(|| {
+                    analyzer.analyze_bass_timing_optimized(black_box(&buffer), black_box(0))
+                });
+            },
+        );
+    }
+
+    // Benchmark optimized version with varying buffer sizes
+    for buffer_size in [512, 1024, 2048, 4096] {
+        group.bench_with_input(
+            BenchmarkId::new("buffer_size_optimized", buffer_size),
+            &buffer_size,
+            |b, &size| {
+                let mut analyzer = BassAnalyzer::new(1024);
+                let window_samples = 1200; // 25ms window
+                analyzer.set_window_size(window_samples);
+                let buffer = vec![0.3f32; size];
+
+                b.iter(|| {
+                    analyzer.analyze_bass_timing_optimized(black_box(&buffer), black_box(0))
+                });
+            },
+        );
+    }
+
     group.finish();
 }
