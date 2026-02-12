@@ -30,3 +30,9 @@ name = "Safety Limiter"
 
 [spectral_compressor]
 name = "Spectral Compressor"
+
+[phase_analyzer]
+name = "Phase Analyzer"
+
+[phase_sync]
+name = "Phase Sync"
