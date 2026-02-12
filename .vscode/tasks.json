@@ -56,6 +56,24 @@
             ],
             "group": "build",
             "problemMatcher": ["$rustc"]
+        },
+        {
+            "label": "Bundle Plugin (Profiling)",
+            "type": "shell",
+            "command": "cargo",
+            "args": [
+                "xtask",
+                "bundle",
+                "${input:pluginName}",
+                "--profile",
+                "profiling"
+            ],
+            "group": "build",
+            "problemMatcher": ["$rustc"],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
         }
     ],
     "inputs": [

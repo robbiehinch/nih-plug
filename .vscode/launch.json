@@ -1,0 +1,52 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "cppvsdbg",
+            "request": "launch",
+            "name": "Debug Plugin in AudioPluginHost (Recommended for Windows)",
+            "program": "C:/projects/vst/JUCE/extras/AudioPluginHost/Builds/VisualStudio2022/x64/Debug/App/AudioPluginHost.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "Bundle Plugin (Profiling)",
+            "environment": [],
+            "console": "externalTerminal",
+            "symbolSearchPath": "C:\\projects\\vst\\Rust\\nih-plug\\target\\profiling;C:\\projects\\vst\\Rust\\nih-plug\\target\\bundled",
+            "symbolOptions": {
+                "searchPaths": [
+                    "C:\\projects\\vst\\Rust\\nih-plug\\target\\profiling",
+                    "C:\\projects\\vst\\Rust\\nih-plug\\target\\bundled"
+                ],
+                "searchMicrosoftSymbolServer": false,
+                "cachePath": "${workspaceFolder}/target/symbols"
+            }
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug Plugin in AudioPluginHost (CodeLLDB - Limited Windows PDB Support)",
+            "program": "C:/projects/vst/JUCE/extras/AudioPluginHost/Builds/VisualStudio2022/x64/Debug/App/AudioPluginHost.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "Bundle Plugin (Profiling)",
+            "sourceLanguages": ["rust"],
+            "env": {},
+            "console": "externalTerminal",
+            "symbolFiles": [
+                {
+                    "pattern": "${workspaceFolder}/target/profiling/*.pdb",
+                    "mode": "always"
+                }
+            ]
+        },
+        {
+            "type": "lldb",
+            "request": "attach",
+            "name": "Attach to AudioPluginHost",
+            "program": "C:/projects/vst/JUCE/extras/AudioPluginHost/Builds/VisualStudio2022/x64/Debug/App/AudioPluginHost.exe",
+            "pid": "${command:pickProcess}",
+            "sourceLanguages": ["rust"]
+        }
+    ]
+}

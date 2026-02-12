@@ -437,6 +437,26 @@ fn bundle_plugin(
         util::reflink_or_combine(lib_paths, &clap_lib_path, compilation_target)
             .context("Could not create CLAP bundle")?;
 
+        // Copy PDB debug symbols for Windows builds (if they exist)
+        for lib_path in lib_paths {
+            let pdb_path = lib_path.with_extension("pdb");
+            if pdb_path.exists() {
+                if let Some(dest_file_name) = clap_lib_path.file_name() {
+                    let dest_pdb = clap_lib_path.with_file_name(
+                        Path::new(dest_file_name).with_extension("pdb")
+                    );
+
+                    match util::reflink_or_combine(&[&pdb_path], &dest_pdb, compilation_target) {
+                        Ok(_) => eprintln!("  Copied debug symbols: {}", dest_pdb.display()),
+                        Err(err) => {
+                            eprintln!("  Warning: Could not copy PDB file for debugging: {}", err);
+                        }
+                    }
+                }
+                break;
+            }
+        }
+
         // In contrast to VST3, CLAP only uses bundles on macOS, so we'll just take the first
         // component of the library name instead
         let clap_bundle_home = bundle_home_dir.join(
@@ -465,6 +485,26 @@ fn bundle_plugin(
         util::reflink_or_combine(lib_paths, &vst2_lib_path, compilation_target)
             .context("Could not create VST2 bundle")?;
 
+        // Copy PDB debug symbols for Windows builds (if they exist)
+        for lib_path in lib_paths {
+            let pdb_path = lib_path.with_extension("pdb");
+            if pdb_path.exists() {
+                if let Some(dest_file_name) = vst2_lib_path.file_name() {
+                    let dest_pdb = vst2_lib_path.with_file_name(
+                        Path::new(dest_file_name).with_extension("pdb")
+                    );
+
+                    match util::reflink_or_combine(&[&pdb_path], &dest_pdb, compilation_target) {
+                        Ok(_) => eprintln!("  Copied debug symbols: {}", dest_pdb.display()),
+                        Err(err) => {
+                            eprintln!("  Warning: Could not copy PDB file for debugging: {}", err);
+                        }
+                    }
+                }
+                break;
+            }
+        }
+
         // VST2 only uses bundles on macOS, so we'll just take the first component of the library
         // name instead
         let vst2_bundle_home = bundle_home_dir.join(
@@ -492,6 +532,29 @@ fn bundle_plugin(
             .context("Could not create VST3 bundle directory")?;
         util::reflink_or_combine(lib_paths, &vst3_lib_path, compilation_target)
             .context("Could not create VST3 bundle")?;
+
+        // Copy PDB debug symbols for Windows builds (if they exist)
+        // This allows debuggers to find symbols without needing symbolSearchPath configuration
+        for lib_path in lib_paths {
+            let pdb_path = lib_path.with_extension("pdb");
+            if pdb_path.exists() {
+                if let Some(dest_file_name) = vst3_lib_path.file_name() {
+                    let dest_pdb = vst3_lib_path.with_file_name(
+                        Path::new(dest_file_name).with_extension("pdb")
+                    );
+
+                    match util::reflink_or_combine(&[&pdb_path], &dest_pdb, compilation_target) {
+                        Ok(_) => eprintln!("  Copied debug symbols: {}", dest_pdb.display()),
+                        Err(err) => {
+                            // Non-fatal: debugging still works with symbolSearchPath
+                            eprintln!("  Warning: Could not copy PDB file for debugging: {}", err);
+                        }
+                    }
+                }
+                // Only copy PDB from the first library (for universal binaries, all should have same symbols)
+                break;
+            }
+        }
 
         let vst3_bundle_home = vst3_lib_path
             .parent()

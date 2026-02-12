@@ -147,3 +147,10 @@ strip = "symbols"
 inherits = "release"
 debug = true
 strip = "none"
+
+# Better for debugging than dev (faster), better for debugging than profiling (less optimized)
+[profile.debug-optimized]
+inherits = "dev"
+opt-level = 1          # Minimal optimizations, much faster than dev
+strip = "none"         # Keep all debug symbols
+debug = true           # Full debug info
